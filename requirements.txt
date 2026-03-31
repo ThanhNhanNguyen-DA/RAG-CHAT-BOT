@@ -1,0 +1,21 @@
+# RAG Ingestion Pipeline — Python dependencies
+# Install: pip install -r requirements.txt
+ 
+# Core
+langchain>=0.2.0
+langchain-community>=0.2.0
+langchain-huggingface>=0.0.1
+sentence-transformers
+# Document loaders
+pypdf>=4.0.0
+docx2txt>=0.8
+ 
+# Supabase
+supabase>=2.4.0
+ 
+# Hugging Face
+transformers>=4.0.0
+torch>=2.0.0
+ 
+# Utilities
+python-dotenv>=1.0.0
