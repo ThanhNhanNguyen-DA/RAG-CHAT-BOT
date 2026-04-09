@@ -32,6 +32,27 @@ if not SUPABASE_KEY:
     raise ValueError("❌ SUPABASE_KEY is missing")
 
 # ==============================
+# GEMINI (Google Generative AI)
+# ==============================
+GEMINI_API_KEYS = [
+    k.strip() for k in os.getenv("GEMINI_API_KEYS", "").split(",") if k.strip()
+]
+
+GEMINI_MODEL = "models/gemini-3-flash-preview"
+
+# Reasonable defaults for internal Q&A
+GEMINI_TEMPERATURE = float(os.getenv("GEMINI_TEMPERATURE", "0.2"))
+GEMINI_TOP_P = float(os.getenv("GEMINI_TOP_P", "0.95"))
+GEMINI_MAX_OUTPUT_TOKENS = int(os.getenv("GEMINI_MAX_OUTPUT_TOKENS", "4096"))
+
+
+# ==============================
+# RAG RETRIEVAL (match_document_chunks)
+# ==============================
+# SQL default is 0.75; lower values return more chunks (cosine similarity).
+VECTOR_MATCH_THRESHOLD = float(os.getenv("VECTOR_MATCH_THRESHOLD", "0.5"))
+
+# ==============================
 # INGESTION
 # ==============================
 TOP_K_DEFAULT = int(os.getenv("TOP_K_DEFAULT", 5))
