@@ -1,153 +1,145 @@
-☁️ CMC Cloud RAG Chatbot
+# CMC Cloud RAG Chatbot
 
-The CMC Cloud RAG Chatbot is an internal virtual assistant (acting as a Solution Architect) built on the RAG (Retrieval-Augmented Generation) architecture. The application helps look up, synthesize, and accurately answer technical questions about CMC Cloud services based on the provided documentation.
+An internal virtual assistant (Solution Architect style) built on **RAG** (Retrieval-Augmented Generation): retrieve context from vectorized documents in Supabase, assemble a prompt, then generate answers with **Google Gemini**. Chat UI is **Streamlit**.
 
-✨ Key Features
+## Features
 
-Complete RAG Architecture: Seamlessly combines semantic search capabilities with the powerful text generation of LLMs.
+- **End-to-end RAG**: embed question → similar chunks (pgvector) → prompt → LLM.
+- **Multi-format ingest**: PDF and DOCX (`.doc` is handled via the DOCX loader; stored `file_type` is `docx`).
+- **Vector search**: Supabase (PostgreSQL + **pgvector**), sample schema includes an **HNSW** index.
+- **Gemini + API key rotation**: multiple keys in `GEMINI_API_KEYS`, cycled per call to ease rate limits.
+- **Streamlit UI**: chat history, Markdown answers with a word-by-word “typing” effect (client-side).
+- **Sample schema with RLS**: `documents` / `document_chunks` and related tables include policies (fits Supabase Auth). The Python client currently uses a **service role key**, which typically **bypasses RLS**; if you switch to a user or anon key, align policies and JWT accordingly.
 
-Multi-format Document Processing: Supports automatic extraction, chunking, and vectorization of data from both PDF and DOCX files.
+## Tech stack
 
-High-Speed Vector Search: Utilizes Supabase (PostgreSQL + pgvector) with HNSW (Hierarchical Navigable Small World) indexing for maximum retrieval performance.
+| Layer | Technology |
+|-------|------------|
+| Language | Python 3 |
+| UI | Streamlit |
+| Embedding | `sentence-transformers` (default `sentence-transformers/all-mpnet-base-v2`, **768**-dim vectors) |
+| LLM | `langchain-google-genai` → `ChatGoogleGenerativeAI` (Gemini) |
+| Vector DB | Supabase (`supabase` Python client) |
+| Documents | `langchain-community` (PyPDF, Docx2txt), `langchain-text-splitters` |
 
-LLM Optimization: Leverages Google Gemini paired with an automatic API Key rotation mechanism to prevent Rate Limit bottlenecks.
+## Repository layout
 
-User-Friendly Interface: Provides an intuitive, smooth chat application built with Streamlit, featuring a typing effect (streaming text).
-
-Role-Based Security: Supports Row Level Security (RLS) on the database to ensure the strict safety of internal document information.
-
-🛠 Tech Stack
-
-Language: Python 3.9+
-
-User Interface (UI): Streamlit
-
-LLM / AI Model:
-
-Answer Generation: Google Gemini (langchain-google-genai)
-
-Embedding: Hugging Face Sentence Transformers (text-embedding-004 or equivalent with a 768D vector dimension)
-
-Vector Database: Supabase (PostgreSQL + pgvector)
-
-RAG Framework: LangChain (Text Splitters, Document Loaders, Prompts)
-
-📂 Directory Structure
-
+```text
 .
 ├── app/
+│   ├── main.py                 # Entry: runs `streamlit run` for the UI
 │   ├── core/
-│   │   └── rag_pipeline.py       # Main RAG flow (Vectorization -> Retrieval -> Prompt -> LLM)
+│   │   └── rag_pipeline.py    # RAG: embed → retrieve → prompt → generate
 │   └── ui/
-│       └── streamlit_app.py      # Streamlit user interface
+│       └── streamlit_app.py   # Chat UI
+├── ingest/
+│   ├── ingest_data.py         # CLI: PDF/DOCX → chunk → embed → Supabase
+│   └── vector_store_schema.sql # DDL, RPC `match_document_chunks`, RLS, HNSW index
 ├── src/
-│   ├── embedding.py              # Load and process Hugging Face model
-│   ├── generation.py             # Call Gemini LLM & handle output/Rate Limits
-│   ├── ingest_data.py            # CLI script to process, chunk, and push docs to Supabase
-│   ├── prompts.py                # System prompt configuration for the Solution Architect role
-│   └── retriever.py              # Connect to Supabase & execute Semantic Search
-├── vector_store_schema.sql       # SQL code to initialize tables, functions, and RLS on Supabase
-├── main.py                       # Application entry point
-├── config.py                     # (Requires configuration) Loads environment variables
-├── .env                          # File containing API Keys
+│   ├── embedding.py           # SentenceTransformer (same pattern for query + ingest)
+│   ├── retriever.py           # Supabase RPC `match_document_chunks`
+│   ├── prompts.py             # Prompt template (LangChain)
+│   └── generation.py          # Gemini + normalize/format Markdown
+├── config.py                  # Environment variables (required: Supabase; Gemini keys)
+├── requirements.txt
 └── README.md
+```
 
+Run scripts from the **repository root** so `config` and `src` imports resolve correctly.
 
-⚙️ Installation Guide
+## Setup
 
-1. System Requirements
+1. **Prerequisites**: Python 3, a Supabase project, Google AI (Gemini) API keys, and a Hugging Face token (recommended if your model or HF policy requires auth).
 
-Python 3.9 or higher.
+2. **Clone and install**:
 
-A Supabase account.
+   ```bash
+   cd chatbot
+   pip install -r requirements.txt
+   ```
 
-Accounts/Tokens for Hugging Face and the Google Gemini API.
+   The codebase also depends on (install if anything is missing after the step above):
 
-2. Install Dependencies
+   ```bash
+   pip install langchain-google-genai langchain-core langchain-text-splitters
+   ```
 
-Clone this repository to your local machine and install the required libraries:
+3. **Supabase**: create a project, open the SQL Editor, and execute the full contents of `ingest/vector_store_schema.sql` (enable `vector`, create tables, `match_document_chunks` RPC, RLS, indexes).
 
-git clone <repository_url>
-cd cmc-cloud-rag-chatbot
-pip install -r requirements.txt
+4. **`.env`** at the repo root (loaded by `python-dotenv` in `config.py`):
 
+   ```env
+   # Required
+   SUPABASE_URL=https://xxxx.supabase.co
+   SUPABASE_KEY=your_service_role_or_secret_key
 
+   # Gemini: comma-separated keys (not a JSON array)
+   GEMINI_API_KEYS=key1,key2,key3
 
-(Ensure the following libraries are installed: streamlit, langchain, langchain-google-genai, langchain-community, sentence-transformers, supabase, pypdf, docx2txt)
+   # Hugging Face (depends on model / HF policy)
+   HUGGINGFACE_API_KEY=your_hf_token
 
-3. Database Setup (Supabase)
+   # Optional — must match vector(768) in SQL and your actual model output
+   HF_EMBEDDING_MODEL=sentence-transformers/all-mpnet-base-v2
+   HF_DEVICE=cpu
+   EMBEDDING_DIM=768
 
-Create a new project on Supabase.
+   # Cosine similarity threshold for the RPC (code default: 0.5)
+   VECTOR_MATCH_THRESHOLD=0.5
 
-Open the SQL Editor, copy the entire contents of the vector_store_schema.sql file, and Run it to construct the table schemas, enable the pgvector extension, and create the search functions (RPC).
+   # Chunking (config defaults: 800 / 150)
+   CHUNK_SIZE=800
+   CHUNK_OVERLAP=150
 
-4. Environment Variables
+   # Other Gemini knobs (temperature, top_p, max tokens) — see `config.py`;
+   # `generation.get_llm()` currently sets fixed temperature/max_output_tokens on the LLM.
+   ```
 
-Create a .env file in the root directory of the project (which will be read by the config.py file) and include the following configurations:
+   The default Gemini model name is set in `config.py` (`GEMINI_MODEL`, e.g. `models/gemini-3-flash-preview`). Change it in `config.py` or extend the code to read from the environment.
 
-# Supabase Configuration
-SUPABASE_URL=your_supabase_project_url
-SUPABASE_KEY=your_supabase_service_role_key
+## Usage
 
-# Gemini Configuration
-GEMINI_API_KEYS=["key_1", "key_2", "key_3"] # Supports rotation to bypass Rate Limits
-GEMINI_MODEL=gemini-1.5-flash # Or whichever model you are currently using
+**1. Ingest documents into the vector store** (from the repo root):
 
-# Hugging Face Embedding Configuration
-HUGGINGFACE_API_KEY=your_hf_token
-HF_EMBEDDING_MODEL=your_hf_model_id (e.g., keepitreal/vietnamese-sbert)
-HF_DEVICE=cpu # Use 'cuda' if a GPU is available
-EMBEDDING_DIM=768
-VECTOR_MATCH_THRESHOLD=0.75
+```bash
+python ingest/ingest_data.py --dir /path/to/your/documents
+```
 
-# Chunking Configuration
-CHUNK_SIZE=1000
-CHUNK_OVERLAP=200
+Single file:
 
+```bash
+python ingest/ingest_data.py --file /path/to/document.pdf
+```
 
+Optional: tie the uploader to `auth.users` (UUID):
 
-🚀 Usage Guide
+```bash
+python ingest/ingest_data.py --file ./doc.pdf --member-id <uuid>
+```
 
-Step 1: Data Ingestion (Vector Database)
+**2. Run the chatbot**:
 
-You must process and push your technical documents (PDF, DOCX) into the Supabase database before you can chat with the assistant.
+```bash
+python app/main.py
+```
 
-Run the following CLI command to ingest an entire directory:
+Or:
 
-python src/ingest_data.py --dir /path/to/your/documents
+```bash
+streamlit run app/ui/streamlit_app.py
+```
 
+By default Streamlit serves at `http://localhost:8501`.
 
+## RAG flow (summary)
 
-Or to ingest a single file:
+1. User submits a question in `app/ui/streamlit_app.py`.
+2. `app/core/rag_pipeline.py` → `src/embedding.py` encodes the question as a 768-dimensional vector.
+3. `src/retriever.py` calls Supabase RPC `match_document_chunks` with `match_threshold` from `VECTOR_MATCH_THRESHOLD` and `match_count` (the pipeline currently uses **top_k = 5**).
+4. `src/prompts.py` merges context and question.
+5. `src/generation.py` calls Gemini (`get_llm()` rotates keys), normalizes and formats Markdown.
+6. The UI renders the result (`st.write_stream` simulates streaming word-by-word).
 
-python src/ingest_data.py --file /path/to/document.pdf
+---
 
-
-
-Step 2: Start the Chatbot UI
-
-Once the data is ready, run the following command to launch the Streamlit interface:
-
-python main.py
-
-
-
-The system will automatically initialize Streamlit and open a new browser tab at: http://localhost:8501.
-
-🧠 System Flow (RAG Pipeline)
-
-The user asks a question via the streamlit_app.py interface.
-
-The question is passed into rag_pipeline.py.
-
-embedding.py uses Hugging Face to convert the query into a Vector (768D).
-
-retriever.py calls the match_document_chunks RPC function on Supabase to retrieve the top 5-15 text segments (chunks) with the highest semantic similarity.
-
-The retrieved Context is combined with the Query and the System Prompt in prompts.py.
-
-generation.py sends the fully constructed Prompt to Google Gemini. The get_llm() function automatically handles API Key rotation.
-
-The Markdown-formatted answer is returned and streamed (displayed word-by-word) onto the Streamlit interface.
-
-Developed for the CMC Cloud ecosystem. ☁️
+Built for the CMC Cloud ecosystem.
