@@ -1,4 +1,4 @@
-# CMC Cloud RAG Chatbot
+# RAG Chatbot
 
 An internal virtual assistant (Solution Architect style) built on **RAG** (Retrieval-Augmented Generation): retrieve context from vectorized documents in Supabase, assemble a prompt, then generate answers with **Google Gemini**. Chat UI is **Streamlit**.
 
@@ -13,14 +13,16 @@ An internal virtual assistant (Solution Architect style) built on **RAG** (Retri
 
 ## Tech stack
 
-| Layer | Technology |
-|-------|------------|
-| Language | Python 3 |
-| UI | Streamlit |
+
+| Layer     | Technology                                                                                       |
+| --------- | ------------------------------------------------------------------------------------------------ |
+| Language  | Python 3                                                                                         |
+| UI        | Streamlit                                                                                        |
 | Embedding | `sentence-transformers` (default `sentence-transformers/all-mpnet-base-v2`, **768**-dim vectors) |
-| LLM | `langchain-google-genai` → `ChatGoogleGenerativeAI` (Gemini) |
-| Vector DB | Supabase (`supabase` Python client) |
-| Documents | `langchain-community` (PyPDF, Docx2txt), `langchain-text-splitters` |
+| LLM       | `langchain-google-genai` → `ChatGoogleGenerativeAI` (Gemini)                                     |
+| Vector DB | Supabase (`supabase` Python client)                                                              |
+| Documents | `langchain-community` (PyPDF, Docx2txt), `langchain-text-splitters`                              |
+
 
 ## Repository layout
 
@@ -50,25 +52,15 @@ Run scripts from the **repository root** so `config` and `src` imports resolve c
 ## Setup
 
 1. **Prerequisites**: Python 3, a Supabase project, Google AI (Gemini) API keys, and a Hugging Face token (recommended if your model or HF policy requires auth).
-
 2. **Clone and install**:
-
-   ```bash
+  ```bash
    cd chatbot
    pip install -r requirements.txt
-   ```
-
+  ```
    The codebase also depends on (install if anything is missing after the step above):
-
-   ```bash
-   pip install langchain-google-genai langchain-core langchain-text-splitters
-   ```
-
 3. **Supabase**: create a project, open the SQL Editor, and execute the full contents of `ingest/vector_store_schema.sql` (enable `vector`, create tables, `match_document_chunks` RPC, RLS, indexes).
-
-4. **`.env`** at the repo root (loaded by `python-dotenv` in `config.py`):
-
-   ```env
+4. `**.env`** at the repo root (loaded by `python-dotenv` in `config.py`):
+  ```env
    # Required
    SUPABASE_URL=https://xxxx.supabase.co
    SUPABASE_KEY=your_service_role_or_secret_key
@@ -93,8 +85,7 @@ Run scripts from the **repository root** so `config` and `src` imports resolve c
 
    # Other Gemini knobs (temperature, top_p, max tokens) — see `config.py`;
    # `generation.get_llm()` currently sets fixed temperature/max_output_tokens on the LLM.
-   ```
-
+  ```
    The default Gemini model name is set in `config.py` (`GEMINI_MODEL`, e.g. `models/gemini-3-flash-preview`). Change it in `config.py` or extend the code to read from the environment.
 
 ## Usage
