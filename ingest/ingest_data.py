@@ -2,6 +2,7 @@ import os
 import sys
 import uuid
 import argparse
+import re
 import logging
 from pathlib import Path
 from typing import Optional
@@ -60,15 +61,14 @@ def get_embedding_model() -> SentenceTransformer:
 splitter = RecursiveCharacterTextSplitter(
     chunk_size=CHUNK_SIZE,
     chunk_overlap=CHUNK_OVERLAP,
-    separators=["\n#{1-6} ",
-                "```\n",
-                "\n\\*\\*\\*+\n",
-                "\n---+\n",
-                "\n---+\n",
-                "\n\n",
-                "\n",
-                " ",
-                ""
+    separators=["\n\n",      # (1) Phân cách cấp độ khối (Block-level)
+                "\n",        # (2) Phân cách cấp độ dòng (Line-level)
+                ". ",        # (3) Phân cách cấp độ câu (Sentence-level)
+                "? ",        # (4) Phân cách câu hỏi (FAQ-level)
+                "! ",        # (5) Phân cách câu cảm thán/mệnh lệnh
+                "; ",        # (6) Phân cách mệnh đề phức (Clause-level)
+                " ",         # (7) Phân cách từ (Word-level)
+                ""           # (8) Phân cách ký tự (Character-level - Fallback cuối cùng)
                 ],
     length_function=len,
 )
@@ -104,6 +104,42 @@ def load_file(path: Path) -> tuple[list[str], str]:
     else:
         raise ValueError(f"Unsupported file type: {ext}. Only PDF and DOCX are supported.")
 
+# ═══════════════════════════════════════════════════════════════════════════
+# Text Preprocessing
+# ═══════════════════════════════════════════════════════════════════════════
+
+def preprocess_text(text: str) -> str:
+    """
+    Tiền xử lý văn bản thô từ PDF/DOCX trước khi chunking để tối ưu hóa vector.
+    """
+    if not text:
+        return ""
+
+    # 1. Chuẩn hóa dấu xuống dòng
+    text = text.replace('\r\n', '\n')
+
+    # 2. Chữa lỗi ngắt từ (Hyphenation at line breaks)
+    # Ví dụ: "auto-\nmotive" -> "automotive"
+    text = re.sub(r'(\w+)-\n(\w+)', r'\1\2', text)
+
+    # 3. Nối các câu bị đứt đoạn (Line-break healing)
+    # Nối dòng nếu dòng trước kết thúc bằng chữ thường hoặc dấu phẩy, 
+    # và dòng sau không bắt đầu bằng ký tự đặc biệt (như list/bullet point).
+    text = re.sub(r'(?<=[a-z,])\n(?=[a-zA-Z])', ' ', text)
+
+    # 4. Cấu trúc hóa lại các Metadata Label (từ viết hoa ngắn)
+    # Ví dụ biến: "CUSTOMER\nWoven by Toyota" -> "CUSTOMER: Woven by Toyota"
+    # Chỉ bắt các chuỗi Toàn Viết Hoa dài từ 2 đến 30 ký tự đứng một mình trên 1 dòng
+    text = re.sub(r'\n([A-Z][A-Z\s&]{1,29})\n', r'\n\1: ', text)
+
+    # 5. Loại bỏ khoảng trắng thừa ở giữa các từ
+    text = re.sub(r'[ \t]+', ' ', text)
+
+    # 6. Giới hạn số lượng dấu xuống dòng liên tiếp
+    # Tránh việc có quá nhiều khoảng trống làm nhiễu chunk, quy về tối đa \n\n
+    text = re.sub(r'\n{3,}', '\n\n', text)
+
+    return text.strip()
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Chunking
@@ -118,6 +154,7 @@ def chunk_texts(pages: list[str]) -> list[dict]:
     global_index = 0
 
     for page_num, page_text in enumerate(pages, start=1):
+        cleaned_text = preprocess_text(page_text)
         splits = splitter.split_text(page_text)
         for split in splits:
             text = split.strip()
