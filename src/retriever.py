@@ -17,6 +17,7 @@ def retrieve_documents(query_embedding, top_k=15):
                 "query_embedding": query_embedding,
                 "match_threshold": VECTOR_MATCH_THRESHOLD,  # Thêm ngưỡng tương đồng
                 "match_count": top_k
+                    
             }
         ).execute()
 

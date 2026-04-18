@@ -9,18 +9,18 @@ from app.core.rag_pipeline import ask_question
 
 # Cấu hình trang Streamlit
 st.set_page_config(
-    page_title="CMC Cloud RAG Chatbot",
+    page_title="SA Agent Chatbot",
     page_icon="☁️",
     layout="centered"
 )
 
-st.title("☁️ CMC Cloud Assistant")
-st.caption("Chatbot nội bộ hỗ trợ giải đáp thông tin (RAG Architecture)")
+st.title("☁️ SA Agent")
+st.caption("Chatbot nội bộ hỗ trợ giải đáp thông tin")
 
 # Khởi tạo bộ nhớ tạm (session state) để lưu lịch sử chat
 if "messages" not in st.session_state:
     st.session_state.messages = [
-        {"role": "assistant", "content": "Xin chào! Tôi là Kỹ sư Giải pháp của CMC Cloud. Tôi có thể giúp gì cho bạn hôm nay?"}
+        {"role": "assistant", "content": "Xin chào! Tôi là SA Agent CMC Cloud. Tôi có thể giúp gì cho bạn hôm nay?"}
     ]
 
 # Hiển thị lịch sử chat

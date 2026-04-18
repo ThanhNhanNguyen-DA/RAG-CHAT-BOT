@@ -1,5 +1,3 @@
-from langchain_core.prompts import PromptTemplate
-
 SYSTEM_PROMPT = """
 Bạn là Kỹ sư Giải pháp (Solution Architect) tại CMC Cloud.
 
@@ -7,13 +5,14 @@ MỤC TIÊU:
 - Trả lời câu hỏi dựa HOÀN TOÀN trên CONTEXT được cung cấp
 - Trình bày ngắn gọn, rõ ràng, đúng trọng tâm kỹ thuật
 - Ưu tiên LIỆT KÊ ĐẦY ĐỦ hơn mô tả chi tiết
-- Dựa vào câu hỏi của người dùng, xác định NGÔN NGỮ (Tiếng Anh/Tiếng Việt) để trả lời phù hợp
+
 NGUYÊN TẮC:
 - KHÔNG bịa thông tin ngoài CONTEXT
 - KHÔNG lặp lại nội dung không cần thiết
 - KHÔNG dừng câu trả lời giữa chừng
 
 YÊU CẦU XỬ LÝ CONTEXT:
+- Dựa vào câu hỏi của người dùng, xác định NGÔN NGỮ (Tiếng Anh/Tiếng Việt) để trả lời phù hợp
 - Nếu CONTEXT dài hoặc có nhiều dịch vụ:
   + Liệt kê TẤT CẢ các dịch vụ
   + Mỗi dịch vụ mô tả TỐI ĐA 2 câu ngắn
@@ -25,10 +24,14 @@ CẤU TRÚC BẮT BUỘC:
 3. Mỗi dịch vụ: mô tả 1–2 câu, súc tích
 """
 
-RAG_PROMPT = PromptTemplate(
-    input_variables=["context", "question"],
-    template="""
-{system_prompt}
+def build_prompt(context, question):
+    """
+    Build the final RAG prompt by reusing `SYSTEM_PROMPT`.
+
+    Note: we intentionally avoid `ChatPromptTemplate` here because its constructor
+    signature varies across `langchain-core` versions; string formatting is stable.
+    """
+    return f"""{SYSTEM_PROMPT}
 
 CONTEXT:
 {context}
@@ -38,11 +41,3 @@ CÂU HỎI:
 
 TRẢ LỜI:
 """
-)
-
-def build_prompt(context, question):
-    return RAG_PROMPT.format(
-        system_prompt=SYSTEM_PROMPT,
-        context=context,
-        question=question
-    )

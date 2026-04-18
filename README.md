@@ -1,6 +1,6 @@
-# RAG Chatbot
+# RAG API Chatbot
 
-An internal virtual assistant (Solution Architect style) built on **RAG** (Retrieval-Augmented Generation): retrieve context from vectorized documents in Supabase, assemble a prompt, then generate answers with **Google Gemini**. Chat UI is **Streamlit**.
+An internal virtual assistant (Solution Architect style) built on **RAG** (Retrieval-Augmented Generation): retrieve context from vectorized documents in Supabase, assemble a prompt, then generate answers with **Google Gemini API**. Chat UI is **Streamlit**.
 
 ## Features
 
@@ -35,7 +35,7 @@ An internal virtual assistant (Solution Architect style) built on **RAG** (Retri
 │   └── ui/
 │       └── streamlit_app.py   # Chat UI
 ├── ingest/
-│   ├── ingest_data.py         # CLI: PDF/DOCX → chunk → embed → Supabase
+│   ├── ingest_data.py         # CLI: Load PDF/DOCX → ETL → chunk → embed → Supabase
 │   └── vector_store_schema.sql # DDL, RPC `match_document_chunks`, RLS, HNSW index
 ├── src/
 │   ├── embedding.py           # SentenceTransformer (same pattern for query + ingest)
@@ -80,8 +80,8 @@ Run scripts from the **repository root** so `config` and `src` imports resolve c
    VECTOR_MATCH_THRESHOLD=0.5
 
    # Chunking (config defaults: 800 / 150)
-   CHUNK_SIZE=800
-   CHUNK_OVERLAP=150
+   CHUNK_SIZE=1200
+   CHUNK_OVERLAP=200
 
    # Other Gemini knobs (temperature, top_p, max tokens) — see `config.py`;
    # `generation.get_llm()` currently sets fixed temperature/max_output_tokens on the LLM.
@@ -131,6 +131,5 @@ By default Streamlit serves at `http://localhost:8501`.
 5. `src/generation.py` calls Gemini (`get_llm()` rotates keys), normalizes and formats Markdown.
 6. The UI renders the result (`st.write_stream` simulates streaming word-by-word).
 
----
 
-Built for the CMC Cloud ecosystem.
+---

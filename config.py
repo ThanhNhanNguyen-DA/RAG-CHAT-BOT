@@ -34,23 +34,24 @@ if not SUPABASE_KEY:
 # ==============================
 # GEMINI (Google Generative AI)
 # ==============================
-GEMINI_API_KEYS = [
-    k.strip() for k in os.getenv("GEMINI_API_KEYS", "").split(",") if k.strip()
-]
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+if not GOOGLE_API_KEY:
+    raise ValueError("❌ GOOGLE_API_KEY is missing")
 
-GEMINI_MODEL = "models/gemini-3-flash-preview"
+# Some .env files may accidentally contain leading/trailing spaces.
+GOOGLE_MODEL = os.getenv("GOOGLE_MODEL", "gemini-3-flash").strip()
 
 # Reasonable defaults for internal Q&A
 GEMINI_TEMPERATURE = float(os.getenv("GEMINI_TEMPERATURE", "0.2"))
 GEMINI_TOP_P = float(os.getenv("GEMINI_TOP_P", "0.95"))
 GEMINI_MAX_OUTPUT_TOKENS = int(os.getenv("GEMINI_MAX_OUTPUT_TOKENS", "4096"))
 
-
 # ==============================
-# RAG RETRIEVAL (match_document_chunks)
+# CHAT PERSISTENCE (Supabase)
 # ==============================
-# SQL default is 0.75; lower values return more chunks (cosine similarity).
-VECTOR_MATCH_THRESHOLD = float(os.getenv("VECTOR_MATCH_THRESHOLD", "0.5"))
+# Must be a UUID that exists in auth.users (FK on chat_sessions.user_id).
+# Leave unset to skip persisting chat_sessions / chat_messages.
+CHAT_USER_ID = (os.getenv("CHAT_USER_ID") or os.getenv("SUPABASE_CHAT_USER_ID") or "").strip() or None
 
 # ==============================
 # INGESTION
