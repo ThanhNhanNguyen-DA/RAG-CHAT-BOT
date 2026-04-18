@@ -130,6 +130,7 @@ By default Streamlit serves at `http://localhost:8501`.
 4. `src/prompts.py` merges context and question.
 5. `src/generation.py` calls Gemini (`get_llm()` rotates keys), normalizes and formats Markdown.
 6. The UI renders the result (`st.write_stream` simulates streaming word-by-word).
+<img width="1916" height="955" alt="image" src="https://github.com/user-attachments/assets/9fefa9db-ae7c-412f-830c-90d28baeacd4" />
 
 
 ---
