@@ -7,7 +7,6 @@ root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
 if root_dir not in sys.path:
     sys.path.append(root_dir)
 
-# Đã xóa bỏ hoàn toàn dòng import GeminiRouter
 from src.embedding import get_embedding_model
 from src.retriever import retrieve_documents
 from src.prompts import build_prompt

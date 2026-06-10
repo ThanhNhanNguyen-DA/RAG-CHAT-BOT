@@ -1,25 +1,6 @@
 import re
-import itertools
-from langchain_google_genai import ChatGoogleGenerativeAI
-from config import GEMINI_API_KEYS, GEMINI_MODEL
-
-# Khởi tạo chuỗi xoay vòng cho API Keys
-if not GEMINI_API_KEYS:
-    raise ValueError("❌ GEMINI_API_KEYS is empty in .env")
-
-_key_cycle = itertools.cycle(GEMINI_API_KEYS)
-
-def get_llm() -> ChatGoogleGenerativeAI:
-    """
-    Lấy instance của LLM với key xoay vòng để tránh nghẽn Rate Limit
-    """
-    api_key = next(_key_cycle)
-    return ChatGoogleGenerativeAI(
-        model=GEMINI_MODEL,
-        api_key=api_key,
-        temperature=0.3,
-        max_output_tokens=2048
-    )
+from agent.llm import get_llm
+from src.prompts import build_prompt
 
 def normalize_llm_output(response) -> str:
     """

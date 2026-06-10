@@ -5,7 +5,6 @@ import argparse
 import re
 import logging
 from pathlib import Path
-from typing import Optional
 
 # LangChain loaders & splitter
 from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader
@@ -29,6 +28,7 @@ from config import (
     CHUNK_OVERLAP,
     EMBEDDING_DIM,
 )
+from src.embedding import get_embedding_model
 
 # ── Logging ────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -40,22 +40,6 @@ log = logging.getLogger("ingest")
 
 # ── Supabase client ────────────────────────────────────────────────────────
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-# ── Hugging Face model ─────────────────────────────────────────────────────
-_embedding_model: Optional[SentenceTransformer] = None
-
-
-def get_embedding_model() -> SentenceTransformer:
-    global _embedding_model
-    if _embedding_model is None:
-        log.info(f"Loading Hugging Face model: {HF_EMBEDDING_MODEL} on {HF_DEVICE}")
-        _embedding_model = SentenceTransformer(
-            HF_EMBEDDING_MODEL,
-            device=HF_DEVICE,
-            token=HUGGINGFACE_API_KEY
-        )
-    return _embedding_model
-
 
 # ── Text splitter ──────────────────────────────────────────────────────────
 splitter = RecursiveCharacterTextSplitter(
@@ -115,31 +99,44 @@ def preprocess_text(text: str) -> str:
     if not text:
         return ""
 
-    # 1. Chuẩn hóa dấu xuống dòng
-    text = text.replace('\r\n', '\n')
-
-    # 2. Chữa lỗi ngắt từ (Hyphenation at line breaks)
-    # Ví dụ: "auto-\nmotive" -> "automotive"
-    text = re.sub(r'(\w+)-\n(\w+)', r'\1\2', text)
-
-    # 3. Nối các câu bị đứt đoạn (Line-break healing)
-    # Nối dòng nếu dòng trước kết thúc bằng chữ thường hoặc dấu phẩy, 
-    # và dòng sau không bắt đầu bằng ký tự đặc biệt (như list/bullet point).
-    text = re.sub(r'(?<=[a-z,])\n(?=[a-zA-Z])', ' ', text)
-
-    # 4. Cấu trúc hóa lại các Metadata Label (từ viết hoa ngắn)
-    # Ví dụ biến: "CUSTOMER\nWoven by Toyota" -> "CUSTOMER: Woven by Toyota"
-    # Chỉ bắt các chuỗi Toàn Viết Hoa dài từ 2 đến 30 ký tự đứng một mình trên 1 dòng
-    text = re.sub(r'\n([A-Z][A-Z\s&]{1,29})\n', r'\n\1: ', text)
-
-    # 5. Loại bỏ khoảng trắng thừa ở giữa các từ
-    text = re.sub(r'[ \t]+', ' ', text)
-
-    # 6. Giới hạn số lượng dấu xuống dòng liên tiếp
-    # Tránh việc có quá nhiều khoảng trống làm nhiễu chunk, quy về tối đa \n\n
-    text = re.sub(r'\n{3,}', '\n\n', text)
+    text = _normalize_line_breaks(text)
+    text = _fix_hyphenation(text)
+    text = _join_broken_lines(text)
+    text = _structure_metadata_labels(text)
+    text = _remove_extra_whitespace(text)
+    text = _limit_consecutive_newlines(text)
 
     return text.strip()
+
+
+def _normalize_line_breaks(text: str) -> str:
+    """Normalize line break characters."""
+    return text.replace('\r\n', '\n')
+
+
+def _fix_hyphenation(text: str) -> str:
+    """Fix hyphenation at line breaks (e.g. 'auto-\\nmotive' -> 'automotive')."""
+    return re.sub(r'(\w+)-\n(\w+)', r'\1\2', text)
+
+
+def _join_broken_lines(text: str) -> str:
+    """Join lines broken by PDF extraction."""
+    return re.sub(r'(?<=[a-z,])\n(?=[a-zA-Z])', ' ', text)
+
+
+def _structure_metadata_labels(text: str) -> str:
+    """Structure metadata labels (e.g. 'CUSTOMER\\nWoven by Toyota' -> 'CUSTOMER: Woven by Toyota')."""
+    return re.sub(r'\n([A-Z][A-Z\s&]{1,29})\n', r'\n\1: ', text)
+
+
+def _remove_extra_whitespace(text: str) -> str:
+    """Remove extra whitespace between words."""
+    return re.sub(r'[ \t]+', ' ', text)
+
+
+def _limit_consecutive_newlines(text: str) -> str:
+    """Limit consecutive newlines to a maximum of 2."""
+    return re.sub(r'\n{3,}', '\n\n', text)
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Chunking
@@ -155,7 +152,7 @@ def chunk_texts(pages: list[str]) -> list[dict]:
 
     for page_num, page_text in enumerate(pages, start=1):
         cleaned_text = preprocess_text(page_text)
-        splits = splitter.split_text(page_text)
+        splits = splitter.split_text(cleaned_text)
         for split in splits:
             text = split.strip()
             if not text:

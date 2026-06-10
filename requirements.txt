@@ -5,7 +5,12 @@
 langchain>=0.2.0
 langchain-community>=0.2.0
 langchain-huggingface>=0.0.1
+langchain-google-genai
+langgraph>=0.2.0
+langchain-core>=0.2.0
 sentence-transformers
+tavily-python>=0.5.0
+numexpr>=2.8.0
 # Document loaders
 pypdf>=4.0.0
 docx2txt>=0.8
@@ -16,9 +21,12 @@ supabase>=2.4.0
 # Hugging Face
 transformers>=4.0.0
 torch>=2.0.0
- 
+
 # Utilities
 python-dotenv>=1.0.0
-
+Authlib
 # UI
 streamlit>=1.0.0
+
+# Testing
+pytest>=8.0.0
